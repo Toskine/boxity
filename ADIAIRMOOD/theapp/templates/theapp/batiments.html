@@ -1,0 +1,33 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <title>Batiments</title>
+</head>
+<body>
+
+    <section id="navbar">
+        <div class="inner"> 
+            <h1> Bienvenue sur notre dashboard </h1>
+            <div class="nav">
+        </div>
+        </div>
+    </section>
+
+    <h2 style="margin-left: 10px; text-align: center;">Choisi ton batiment :</h2>
+    <h1>
+    {% if batiments_list %}
+        <ul>
+        {% for batiment in batiments_list %}
+            <li style="margin-left: 30px; text-align: center;"><a href="/theapp/{{ batiment.id }}/">{{ batiment.batiment_nom }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucun bâtiment existant.</p>
+    {% endif %}
+    </h1>
+</body>
+</html>

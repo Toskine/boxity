@@ -1,0 +1,100 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <title>Adi Air Mood</title>
+</head>
+<body>
+
+    <section id="navbar">
+        <div class="inner"> 
+            <h1>Bâtiment : {{ batiment.batiment_nom }} : {{ lieu.lieu_nom }}</h1>
+            <div class="nav">
+            
+        </div>
+        </div>
+    </section>
+
+
+<h2 style="margin-left: 10px; text-align: center;">Objet : {{ idd.idd }}</h2>
+
+
+<div id = "data" class="data">
+    <div class="features">
+        <img class="icon" src="https://img.icons8.com/external-vitaliy-gorbachev-lineal-vitaly-gorbachev/60/000000/external-thermometer-weather-vitaliy-gorbachev-lineal-vitaly-gorbachev.png"/>
+        <div class="info">
+            <div class="topic"> 
+                <h3> Temperature</h3> 
+            </div>
+            <div class="numbers">
+                <p> {{ temp.temp }}°</p>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="features">
+        <img class="icon" src="https://img.icons8.com/fluency-systems-regular/48/000000/moisture.png"/>
+        
+        <div class="info">
+            <div class="topic"> 
+                <h3> Humidité</h3>
+            </div>
+
+            <div class="numbers">
+                <p> {{ hum.hum}}% </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="features"> 
+        <img class="icon" src="https://img.icons8.com/ios/50/000000/atmospheric-pressure.png"/>
+        
+        <div class="info">
+            <div class="topic">
+                <h3> Pression atmosphérique </h3>
+            </div>
+
+            <div class="numbers">
+                <p> {{ pres.pres }}hP</p>
+            </div>
+            
+        </div>
+
+    </div>
+
+    <div class="features">
+        <img class="icon" src="https://img.icons8.com/pastel-glyph/64/000000/light--v1.png"/>
+        
+        <div class="info">
+            <div class="topic">
+                <h3> Luminosité </h3>
+            </div>
+
+            <div class="numbers">
+                <p> {{ lum.lum }}lux </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="features">
+        <img class="icon" src="https://img.icons8.com/ios/50/000000/room-sound.png"/>
+
+        <div class="info">
+            <div class="topic">
+                <h3> Niveau sonore </h3>
+            </div>
+            <div class="numbers">
+                <p> {{ bruit.bruit }}dB </p>
+            </div>
+            
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <title>Batiment</title>
+</head>
+<body>
+    
+
+    <section id="navbar">
+        <div class="inner"> 
+            <h1>Bâtiment : {{ batiment.batiment_nom }} </h1>
+            <div class="nav">
+            
+        </div>
+        </div>
+    </section>
+
+    <h2 style="margin-left: 10px; text-align: center;">Choisi ta salle :</h2>
+    <h1>
+    {% if lieux_list %}
+        <ul>
+        {% for lieu in lieux_list %}
+            <li style="margin-left: 30px; text-align: center;"><a href="/theapp/{{ lieu.id }}/lieu">{{ lieu.lieu_nom }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucun lieu existant.</p>
+    {% endif %}
+    </h1>
+</body>
+</html>
