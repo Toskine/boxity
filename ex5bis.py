@@ -3,7 +3,7 @@ import grovepi
 from grove_rgb_lcd import *
 import paho.mqtt.client as mqtt
 import json
-from grove_i2c_barometic_sensor_BMP180 import BMP180
+from grove_bme280 import BME280
 from grove_gas_sensor import GasSensor
 
 # Configuration MQTT
@@ -21,15 +21,6 @@ def on_connect(client, userdata, flags, rc):
 def on_publish(client, userdata, mid):
     print(f"Message {mid} publié")
 
-# Initialisation des ports
-dht_sensor_port = 7     # D7
-light_sensor_port = 0   # A0 (un port analogique)
-button_port = 6         # D6
-
-# Initialisation des capteurs I2C
-bmp180 = BMP180(0x77)  # Adresse I2C par défaut du BMP180
-air_quality = GasSensor(0x04)  # Air Quality Sensor
-
 # Initialisation du client MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -42,6 +33,18 @@ try:
 except Exception as e:
     print(f"Erreur de connexion MQTT: {e}")
 
+print("Démarrage du programme de monitoring...")
+
+
+# Initialisation des ports
+dht_sensor_port = 7     # D7
+light_sensor_port = 0   # A0 (un port analogique)
+button_port = 6         # D6
+
+# Initialisation des capteurs I2C
+bme280 = BME280(0x77) #defaut du BMP180
+air_quality = GasSensor(0x04)  # Air Quality Sensor
+
 # Configuration des ports
 grovepi.pinMode(button_port, "INPUT")
 setRGB(0, 255, 255)
@@ -50,8 +53,6 @@ setRGB(0, 255, 255)
 mode = 0  # 0 = tous les capteurs, 1 = air quality et pression
 last_button_state = 0
 last_toggle_time = 0
-
-print("Démarrage du programme de monitoring...")
 
 while True:
     try:
@@ -69,9 +70,10 @@ while True:
 
         # Lecture de tous les capteurs
         light = grovepi.analogRead(light_sensor_port)
-        temp_baro = bmp180.temperature()
-        pressure = bmp180.pressure() / 100.0  # Conversion en hPa
-        altitude = bmp180.altitude()
+        temp_baro = bme280.temperature  # Changement ici
+        pressure = bme280.pressure / 100.0  # Conversion en hPa
+        altitude = bme280.altitude
+        humidity_bme = bme280.humidity  # Nouveau : le BME280 peut aussi mesurer l'humidité
         air_quality_value = air_quality.read()
         
         # Préparer le message MQTT de base
@@ -81,6 +83,7 @@ while True:
             "timestamp": time.time(),
             "pressure": pressure,
             "altitude": altitude,
+            "humidity_bme": humidity_bme,  # Ajout de l'humidité du BME280
             "air_quality": air_quality_value,
             "temperature_baro": temp_baro
         }
