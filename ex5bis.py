@@ -1,18 +1,23 @@
 import time
 import grovepi
 from grove_rgb_lcd import *
+import paho.mqtt.client as mqtt
+import json
 
-dht_sensor_port = 7     # D7
-light_sensor_port = 0   # A0 (un port analogique)
-button_port = 6         # D6
+# Configuration MQTT
+MQTT_BROKER = "broker.hivemq.com"  # Exemple de broker public
+MQTT_PORT = 1883
+MQTT_TOPIC = "capteurs/grovepi"  # Topic à personnaliser
 
-grovepi.pinMode(button_port, "INPUT")
+# Initialisation du client MQTT
+client = mqtt.Client()
+try:
+    client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    client.loop_start()
+except Exception as e:
+    print(f"Erreur de connexion MQTT: {e}")
 
-setRGB(0, 255, 255)
-
-mode = 0  # 0 = Temp/Hum, 1 = Lumière
-last_button_state = 0
-last_toggle_time = 0
+# ...existing code...
 
 while True:
     try:
@@ -30,6 +35,13 @@ while True:
 
         # Lire capteur lumière
         light = grovepi.analogRead(light_sensor_port)
+        
+        # Préparer le message MQTT
+        mqtt_data = {
+            "light": light,
+            "mode": mode,
+            "timestamp": time.time()
+        }
 
         # Lire DHT uniquement si en mode 0
         if mode == 0:
@@ -39,13 +51,28 @@ while True:
             if not (temp != temp or humidity != humidity):  # test si NaN
                 setText_norefresh(f"Temp:{temp:.1f}C\nHum:{humidity:.1f}%")
                 print(f"Temp: {temp:.2f}C  Humidity: {humidity:.2f}%  Light: {light}")
+                mqtt_data.update({
+                    "temperature": temp,
+                    "humidity": humidity
+                })
             else:
                 print(f"(Lecture DHT invalide) Light: {light}")
         else:
             setText_norefresh(f"Luminosity:\n{light}")
             print(f"Luminosity only mode. Light: {light}")
+
+        # Envoyer les données via MQTT
+        try:
+            client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
+        except Exception as e:
+            print(f"Erreur d'envoi MQTT: {e}")
+
         time.sleep(1)
 
     except Exception as e:
         print("Erreur:", e)
         time.sleep(0.5)
+
+# Nettoyage à la fin du programme
+client.loop_stop()
+client.disconnect()
