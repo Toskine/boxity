@@ -5,13 +5,27 @@ import paho.mqtt.client as mqtt
 import json
 
 # Configuration MQTT
-MQTT_BROKER = "broker.hivemq.com"  # Exemple de broker public
+MQTT_BROKER = "10.34.164.21"  # Adresse IP de votre broker
 MQTT_PORT = 1883
-MQTT_TOPIC = "capteurs/grovepi"  # Topic à personnaliser
+MQTT_TOPIC = "boxity/capteurs"
+
+# Callbacks MQTT pour le debug
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("Connecté au broker MQTT")
+    else:
+        print(f"Échec de connexion au broker, code retour={rc}")
+
+def on_publish(client, userdata, mid):
+    print(f"Message {mid} publié avec succès")
 
 # Initialisation du client MQTT
 client = mqtt.Client()
+client.on_connect = on_connect
+client.on_publish = on_publish
+
 try:
+    print(f"Tentative de connexion à {MQTT_BROKER}...")
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_start()
 except Exception as e:
