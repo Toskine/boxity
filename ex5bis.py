@@ -3,7 +3,9 @@ import grovepi
 from grove_rgb_lcd import *
 import paho.mqtt.client as mqtt
 import json
-from grove_bme280 import BME280
+import board
+import busio
+import adafruit_bme280.advanced as adafruit_bme280
 from grove_gas_sensor import GasSensor
 
 # Configuration MQTT
@@ -35,14 +37,24 @@ except Exception as e:
 
 print("Démarrage du programme de monitoring...")
 
-
 # Initialisation des ports
 dht_sensor_port = 7     # D7
 light_sensor_port = 0   # A0 (un port analogique)
 button_port = 6         # D6
 
-# Initialisation des capteurs I2C
-bme280 = BME280(0x77) #defaut du BMP180
+# Initialisation I2C pour le BME280
+i2c = busio.I2C(board.SCL, board.SDA)
+bme280 = adafruit_bme280.Adafruit_BME280_I2C(i2c, address=0x77)
+
+# Configuration du BME280 pour plus de précision
+bme280.mode = adafruit_bme280.MODE_NORMAL
+bme280.standby_period = adafruit_bme280.STANDBY_TC_500
+bme280.iir_filter = adafruit_bme280.IIR_FILTER_X16
+bme280.overscan_pressure = adafruit_bme280.OVERSCAN_X16
+bme280.overscan_humidity = adafruit_bme280.OVERSCAN_X1
+bme280.overscan_temperature = adafruit_bme280.OVERSCAN_X2
+
+# Initialisation du capteur de qualité d'air
 air_quality = GasSensor(0x04)  # Air Quality Sensor
 
 # Configuration des ports
@@ -70,20 +82,19 @@ while True:
 
         # Lecture de tous les capteurs
         light = grovepi.analogRead(light_sensor_port)
-        temp_baro = bme280.temperature  # Changement ici
-        pressure = bme280.pressure / 100.0  # Conversion en hPa
+        temp_baro = bme280.temperature
+        pressure = bme280.pressure  # Déjà en hPa
         altitude = bme280.altitude
-        humidity_bme = bme280.humidity  # Nouveau : le BME280 peut aussi mesurer l'humidité
+        humidity_bme = bme280.relative_humidity
         air_quality_value = air_quality.read()
         
         # Préparer le message MQTT de base
         mqtt_data = {
-            "light": light,
-            "mode": mode,
             "timestamp": time.time(),
+            "light": light,
             "pressure": pressure,
             "altitude": altitude,
-            "humidity_bme": humidity_bme,  # Ajout de l'humidité du BME280
+            "humidity_bme": humidity_bme,
             "air_quality": air_quality_value,
             "temperature_baro": temp_baro
         }
@@ -96,14 +107,14 @@ while True:
             if not (temp_dht != temp_dht or humidity != humidity):  # Vérification NaN
                 setText_norefresh(f"T:{temp_dht:.1f}C P:{pressure:.0f}\nAQ:{air_quality_value}")
                 print(f"""
-                            Mesures complètes:
-                            - Température (DHT): {temp_dht:.1f}°C
-                            - Humidité: {humidity:.1f}%
-                            - Pression: {pressure:.0f}hPa
-                            - Qualité air: {air_quality_value}
-                            - Luminosité: {light}
-                            - Altitude: {altitude:.1f}m
-                            """)
+Mesures complètes:
+- Température (DHT): {temp_dht:.1f}°C
+- Humidité: {humidity:.1f}%
+- Pression: {pressure:.0f}hPa
+- Qualité air: {air_quality_value}
+- Luminosité: {light}
+- Altitude: {altitude:.1f}m
+""")
                 mqtt_data.update({
                     "temperature_dht": temp_dht,
                     "humidity": humidity
@@ -115,11 +126,11 @@ while True:
             # Mode air quality et pression
             setText_norefresh(f"AQ:{air_quality_value}\nP:{pressure:.0f}hPa")
             print(f"""
-                Mesures air:
-                - Qualité air: {air_quality_value}
-                - Pression: {pressure:.0f}hPa
-                - Température: {temp_baro:.1f}°C
-                """)
+Mesures air:
+- Qualité air: {air_quality_value}
+- Pression: {pressure:.0f}hPa
+- Température: {temp_baro:.1f}°C
+""")
 
         # Envoi des données via MQTT
         try:
