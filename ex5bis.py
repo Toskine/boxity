@@ -3,6 +3,8 @@ import grovepi
 from grove_rgb_lcd import *
 import paho.mqtt.client as mqtt
 import json
+from grove_i2c_barometic_sensor_BMP180 import BMP180
+from grove_gas_sensor import GasSensor
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -16,26 +18,40 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"Échec de connexion au broker, code retour={rc}")
 
+def on_publish(client, userdata, mid):
+    print(f"Message {mid} publié")
+
+# Initialisation des ports
+dht_sensor_port = 7     # D7
+light_sensor_port = 0   # A0 (un port analogique)
+button_port = 6         # D6
+
+# Initialisation des capteurs I2C
+bmp180 = BMP180(0x77)  # Adresse I2C par défaut du BMP180
+air_quality = GasSensor(0x04)  # Air Quality Sensor
+
 # Initialisation du client MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
+client.on_publish = on_publish
 
 try:
+    print(f"Connexion au broker MQTT {MQTT_BROKER}...")
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_start()
 except Exception as e:
     print(f"Erreur de connexion MQTT: {e}")
 
-dht_sensor_port = 7     # D7
-light_sensor_port = 0   # A0 (un port analogique)
-button_port = 6         # D6
-
+# Configuration des ports
 grovepi.pinMode(button_port, "INPUT")
 setRGB(0, 255, 255)
 
-mode = 0  # 0 = Temp/Hum, 1 = Lumière
+# Variables globales
+mode = 0  # 0 = tous les capteurs, 1 = air quality et pression
 last_button_state = 0
 last_toggle_time = 0
+
+print("Démarrage du programme de monitoring...")
 
 while True:
     try:
@@ -47,39 +63,62 @@ while True:
             if current_time - last_toggle_time > 0.5:
                 mode = 1 - mode
                 last_toggle_time = current_time
-                print("Mode changé:", mode)
+                print("Mode changé:", "Air Quality" if mode else "Tous capteurs")
 
         last_button_state = button_state
 
-        # Lire capteur lumière
+        # Lecture de tous les capteurs
         light = grovepi.analogRead(light_sensor_port)
+        temp_baro = bmp180.temperature()
+        pressure = bmp180.pressure() / 100.0  # Conversion en hPa
+        altitude = bmp180.altitude()
+        air_quality_value = air_quality.read()
         
-        # Préparer le message MQTT
+        # Préparer le message MQTT de base
         mqtt_data = {
             "light": light,
             "mode": mode,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "pressure": pressure,
+            "altitude": altitude,
+            "air_quality": air_quality_value,
+            "temperature_baro": temp_baro
         }
 
-        # Lire DHT uniquement si en mode 0
+        # Mode d'affichage et lectures supplémentaires
         if mode == 0:
-            [temp, humidity] = grovepi.dht(dht_sensor_port, 0)
+            # Mode tous capteurs
+            [temp_dht, humidity] = grovepi.dht(dht_sensor_port, 0)
 
-            # Vérifier que la lecture est valide (pas nan)
-            if not (temp != temp or humidity != humidity):  # test si NaN
-                setText_norefresh(f"Temp:{temp:.1f}C\nHum:{humidity:.1f}%")
-                print(f"Temp: {temp:.2f}C  Humidity: {humidity:.2f}%  Light: {light}")
+            if not (temp_dht != temp_dht or humidity != humidity):  # Vérification NaN
+                setText_norefresh(f"T:{temp_dht:.1f}C P:{pressure:.0f}\nAQ:{air_quality_value}")
+                print(f"""
+                            Mesures complètes:
+                            - Température (DHT): {temp_dht:.1f}°C
+                            - Humidité: {humidity:.1f}%
+                            - Pression: {pressure:.0f}hPa
+                            - Qualité air: {air_quality_value}
+                            - Luminosité: {light}
+                            - Altitude: {altitude:.1f}m
+                            """)
                 mqtt_data.update({
-                    "temperature": temp,
+                    "temperature_dht": temp_dht,
                     "humidity": humidity
                 })
             else:
-                print(f"(Lecture DHT invalide) Light: {light}")
+                print("Erreur lecture DHT")
+                setText_norefresh(f"Err DHT\nAQ:{air_quality_value}")
         else:
-            setText_norefresh(f"Luminosity:\n{light}")
-            print(f"Luminosity only mode. Light: {light}")
+            # Mode air quality et pression
+            setText_norefresh(f"AQ:{air_quality_value}\nP:{pressure:.0f}hPa")
+            print(f"""
+                Mesures air:
+                - Qualité air: {air_quality_value}
+                - Pression: {pressure:.0f}hPa
+                - Température: {temp_baro:.1f}°C
+                """)
 
-        # Envoyer les données via MQTT
+        # Envoi des données via MQTT
         try:
             client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
         except Exception as e:
@@ -87,10 +126,17 @@ while True:
 
         time.sleep(1)
 
+    except KeyboardInterrupt:
+        print("\nArrêt du programme...")
+        break
     except Exception as e:
-        print("Erreur:", e)
+        print(f"Erreur: {e}")
         time.sleep(0.5)
 
-# Nettoyage à la fin du programme
+# Nettoyage final
+print("Fermeture des connexions...")
 client.loop_stop()
 client.disconnect()
+setRGB(0,0,0)
+setText("")
+print("Programme terminé.")
