@@ -5,33 +5,37 @@ import paho.mqtt.client as mqtt
 import json
 
 # Configuration MQTT
-MQTT_BROKER = "10.34.164.21"  # Adresse IP de votre broker
+MQTT_BROKER = "10.34.164.21"
 MQTT_PORT = 1883
-MQTT_TOPIC = "boxity/capteurs"
+MQTT_TOPIC = "capteurs/grovepi"
 
-# Callbacks MQTT pour le debug
+# Callbacks MQTT
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connecté au broker MQTT")
     else:
         print(f"Échec de connexion au broker, code retour={rc}")
 
-def on_publish(client, userdata, mid):
-    print(f"Message {mid} publié avec succès")
-
 # Initialisation du client MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
-client.on_publish = on_publish
 
 try:
-    print(f"Tentative de connexion à {MQTT_BROKER}...")
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_start()
 except Exception as e:
     print(f"Erreur de connexion MQTT: {e}")
 
-# ...existing code...
+dht_sensor_port = 7     # D7
+light_sensor_port = 0   # A0 (un port analogique)
+button_port = 6         # D6
+
+grovepi.pinMode(button_port, "INPUT")
+setRGB(0, 255, 255)
+
+mode = 0  # 0 = Temp/Hum, 1 = Lumière
+last_button_state = 0
+last_toggle_time = 0
 
 while True:
     try:
