@@ -6,12 +6,23 @@ import json
 import board
 import busio
 import adafruit_bme280.advanced as adafruit_bme280
-from grove_gas_sensor import GasSensor
+import smbus2
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
 MQTT_PORT = 1883
 MQTT_TOPIC = "boxity/capteurs"
+
+# Configuration I2C pour Air Quality Sensor
+AIR_QUALITY_ADDR = 0x04
+bus = smbus2.SMBus(1)  # bus I2C numéro 1
+
+def read_air_quality():
+    try:
+        return bus.read_byte(AIR_QUALITY_ADDR)
+    except:
+        print("Erreur lecture Air Quality")
+        return 0
 
 # Callbacks MQTT
 def on_connect(client, userdata, flags, rc):
@@ -54,9 +65,6 @@ bme280.overscan_pressure = adafruit_bme280.OVERSCAN_X16
 bme280.overscan_humidity = adafruit_bme280.OVERSCAN_X1
 bme280.overscan_temperature = adafruit_bme280.OVERSCAN_X2
 
-# Initialisation du capteur de qualité d'air
-air_quality = GasSensor(0x04)  # Air Quality Sensor
-
 # Configuration des ports
 grovepi.pinMode(button_port, "INPUT")
 setRGB(0, 255, 255)
@@ -86,7 +94,7 @@ while True:
         pressure = bme280.pressure  # Déjà en hPa
         altitude = bme280.altitude
         humidity_bme = bme280.relative_humidity
-        air_quality_value = air_quality.read()
+        air_quality_value = read_air_quality()
         
         # Préparer le message MQTT de base
         mqtt_data = {
