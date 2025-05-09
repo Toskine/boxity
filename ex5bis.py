@@ -7,7 +7,7 @@ import json
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
 MQTT_PORT = 1883
-MQTT_TOPIC = "capteurs/grovepi"
+MQTT_TOPIC = "boxity/capteurs"
 
 # Callbacks MQTT
 def on_connect(client, userdata, flags, rc):
