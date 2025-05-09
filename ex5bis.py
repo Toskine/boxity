@@ -31,11 +31,29 @@ light_sensor_port = 0   # A0 (un port analogique)
 button_port = 6         # D6
 
 grovepi.pinMode(button_port, "INPUT")
-setRGB(0, 255, 255)
+
+# Initialisation de l'écran LCD avec gestion d'erreur
+lcd_ok = True
+try:
+    setRGB(0, 255, 255)
+    print("Écran LCD initialisé")
+except OSError:
+    lcd_ok = False
+    print("Problème avec l'écran LCD - fonctionnant en mode sans écran")
 
 mode = 0  # 0 = Temp/Hum, 1 = Lumière
 last_button_state = 0
 last_toggle_time = 0
+
+# Fonction pour afficher sur LCD de manière sécurisée
+def safe_display(text):
+    if lcd_ok:
+        try:
+            setText_norefresh(text)
+        except:
+            print(f"[LCD] {text}")  # Afficher dans console si écran non disponible
+    else:
+        print(f"[LCD] {text}")  # Afficher dans console si écran non disponible
 
 while True:
     try:
@@ -67,7 +85,7 @@ while True:
 
             # Vérifier que la lecture est valide (pas nan)
             if not (temp != temp or humidity != humidity):  # test si NaN
-                setText_norefresh(f"Temp:{temp:.1f}C\nHum:{humidity:.1f}%")
+                safe_display(f"Temp:{temp:.1f}C\nHum:{humidity:.1f}%")
                 print(f"Temp: {temp:.2f}C  Humidity: {humidity:.2f}%  Light: {light}")
                 mqtt_data.update({
                     "temperature": temp,
@@ -76,7 +94,7 @@ while True:
             else:
                 print(f"(Lecture DHT invalide) Light: {light}")
         else:
-            setText_norefresh(f"Luminosity:\n{light}")
+            safe_display(f"Luminosity:\n{light}")
             print(f"Luminosity only mode. Light: {light}")
 
         # Envoyer les données via MQTT
@@ -87,6 +105,9 @@ while True:
 
         time.sleep(1)
 
+    except KeyboardInterrupt:
+        print("\nArrêt du programme...")
+        break
     except Exception as e:
         print("Erreur:", e)
         time.sleep(0.5)
@@ -94,3 +115,4 @@ while True:
 # Nettoyage à la fin du programme
 client.loop_stop()
 client.disconnect()
+print("Programme terminé.")
