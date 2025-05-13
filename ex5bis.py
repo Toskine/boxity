@@ -3,13 +3,7 @@ import grovepi
 from grove_rgb_lcd import *
 import paho.mqtt.client as mqtt
 import json
-import serial
 import math
-import mido
-import os
-import smbus
-from grove.i2c import Bus
-from bmp280 import BMP280
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -23,28 +17,6 @@ BTN_PORT = 6     # D6
 LED_PORT = 4     # D4
 BUZZER_PORT = 3  # D3
 LIGHT_THRESHOLD = 300  # Seuil de luminosité
-
-# Initialisation du baromètre
-try:
-    # Initialisation I2C et BMP280
-    i2c_bus = Bus(3)  # I2C bus 3
-    bmp280 = BMP280(bus=i2c_bus)
-    
-    # Test de lecture pour vérifier que tout fonctionne
-    test_temp = bmp280.get_temperature()
-    test_pressure = bmp280.get_pressure()
-    
-    print("Baromètre initialisé avec succès:")
-    print(f"  Test température: {test_temp:.1f}°C")
-    print(f"  Test pression: {test_pressure:.1f}Pa")
-    baro_ok = True
-    bmp = bmp280  # Pour garder la compatibilité avec le reste du code
-
-except Exception as e:
-    print(f"Erreur initialisation baromètre: {e}")
-    print("Vérifiez que le BMP280 est bien branché sur I2C-3")
-    baro_ok = False
-    bmp = None
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT: " + ("Connecté" if rc == 0 else f"Erreur {rc}"))
@@ -126,8 +98,8 @@ def safe_display(text, color=(0,255,255)):
     """Affichage sécurisé sur LCD"""
     try:
         setRGB(*color)
-        setText("")  # Clear screen first
-        setText(text)  # Then write new text
+        setText("")  
+        setText(text)  
     except:
         print(f"[LCD] {text}")
 
