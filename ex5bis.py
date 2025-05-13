@@ -20,12 +20,10 @@ LIGHT_THRESHOLD = 300  # Seuil de luminosité
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT: " + ("Connecté" if rc == 0 else f"Erreur {rc}"))
-
 # Initialisation MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
 mqtt_send = lambda hex_value: float(int(hex(hex_value), 16)) / 100
-
 try:
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_start()
@@ -48,10 +46,8 @@ def play_short_tune():
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
         time.sleep(0.05)
-
 lat, lon, alt = 0x13c6, 0x131, 0xb04
 pressure, altitude = 0x18bcd, 0xb04
-
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
