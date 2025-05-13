@@ -107,6 +107,33 @@ LED_PORT = 4     # D4
 BUZZER_PORT = 3  # D3
 LIGHT_THRESHOLD = 200
 
+NOTES = {
+    'C4': 262,
+    'E4': 330,
+    'G4': 392,
+    'C5': 523,
+    'E5': 659,
+    'G5': 784
+}
+
+def play_tone(note, duration=0.2):
+    """Joue une note sur le buzzer"""
+    for _ in range(int(duration * 10)):  # Plus de cycles = son plus fort
+        grovepi.digitalWrite(BUZZER_PORT, 1)
+        time.sleep(1.0 / (2 * NOTES[note]))  # Demi-période
+        grovepi.digitalWrite(BUZZER_PORT, 0)
+        time.sleep(1.0 / (2 * NOTES[note]))
+
+def play_mario_tune():
+    """Joue le thème de Mario quand il prend une pièce"""
+    notes = ['E5', 'G5', 'E5', 'C5', 'G4', 'C5']
+    durations = [0.15, 0.15, 0.15, 0.15, 0.15, 0.3]
+    
+    for note, duration in zip(notes, durations):
+        play_tone(note, duration)
+        time.sleep(0.05)  # Petit délai entre les notes
+
+
 def buzz(duration=0.1, count=1):
     """Fait bipper le buzzer"""
     for _ in range(count):
@@ -156,7 +183,8 @@ while True:
         light = grovepi.analogRead(LIGHT_PORT)
         # Vérification luminosité
         if light < LIGHT_THRESHOLD:
-            buzz(count=3)  # 3 bips courts
+            print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
+            play_mario_tune()  # Joue la mélodie de Mario
             
         lat, lon, alt = gps.read_position() if gps.working else (None, None, None)
         
