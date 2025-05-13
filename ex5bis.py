@@ -144,30 +144,39 @@ while True:
             
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
+                # Conversion de la pression
+                press = int(mqtt_send(pressure))
                 safe_display(
-                    f"T:{temp:.1f}C {int(mqtt_send(pressure))}hPa\nH:{hum}%"
+                    f"T:{temp:.1f}C {press}hPa\n"
+                    f"H:{hum:.0f}%"
                 )
             else:
                 safe_display("Err DHT", color=(255,0,0))
                 
         elif mode == 1:
-            short_lat = f"{mqtt_send(lat):.3f}"
-            short_lon = f"{mqtt_send(lon):.3f}"
+            # Formatage GPS avec 4 décimales max
+            lat_val = format(mqtt_send(lat), '.4f')
+            lon_val = format(mqtt_send(lon), '.4f')
             safe_display(
-                f"L:{light}\n{short_lat},{short_lon}"
+                f"L:{light}\n"
+                f"{lat_val},{lon_val}"
             )
             
         elif mode == 2:
-            short_alt = f"{mqtt_send(alt):.3f}"
+            # Formatage altitude avec 1 décimale
+            alt_val = format(mqtt_send(alt), '.1f')
             safe_display(
-                f"{short_alt}\nLille"
+                f"Alt:{alt_val}m\n"
+                f"Lille"
             )
 
         else:
-            press = mqtt_send(pressure)
-            alt_val = mqtt_send(altitude)
+            # Mode pression et altitude
+            press = int(mqtt_send(pressure))
+            alt_val = int(mqtt_send(altitude))
             safe_display(
-                f"P:{int(press)}hPa\nAlt:{int(alt_val)}m"
+                f"P:{press}hPa\n"
+                f"Alt:{alt_val}m"
             )
 
         client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
