@@ -4,7 +4,7 @@ import serial
 import requests
 
 class GPS:
-    XTRA_URL     = "http://xtra.gpsds.com/xtra.bin"
+    XTRA_URL     = "https://xtra2.gpsonextra.net/xtra.bin"
     XTRA_FILE    = "/tmp/xtra.bin"
     XTRA_MAX_AGE = 6 * 3600   # 6 hours
 

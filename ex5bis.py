@@ -114,7 +114,7 @@ while True:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
             play_mario_tune()  # Joue la mélodie de Mario
 
-        """   
+           
         gps = GPS(fix_timeout=90)   # on peut étendre le timeout si le fix est long
         if not gps.working:
             print("GPS indisponible, arrêt ou fallback…")
@@ -124,8 +124,8 @@ while True:
             if lat is None:
                 print("Toujours pas de fix après init, en attente…")
         lat, lon, alt = gps.read_position() if gps.working else (None, None, None)
-        """
-        lat, lon, alt = (None, None, None)
+        
+    
         # Données MQTT
         mqtt_data = {
             "timestamp": time.time(),
