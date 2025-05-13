@@ -42,15 +42,16 @@ NOTES = {
 }
 
 def play_short_tune():
-    """Joue une courte mélodie"""
     notes = ['E5', 'G5', 'C5']
     durations = [0.15, 0.15, 0.2]
     
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
         time.sleep(0.05)
+
 lat, lon, alt = 0x13c6, 0x131, 0xb04
-pressure, altitude = 1013.25, 28.2
+pressure, altitude = 0x18bcd, 0xb04
+
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
@@ -64,7 +65,7 @@ def play_tone(note_or_freq, duration=0.2):
     cycles = int(duration * freq)
     period = 1.0 / freq
     
-    for _ in range(cycles):
+    for _ in range(int(cycles)):
         grovepi.digitalWrite(BUZZER_PORT, 1)
         time.sleep(period/2)
         grovepi.digitalWrite(BUZZER_PORT, 0)
@@ -72,7 +73,7 @@ def play_tone(note_or_freq, duration=0.2):
 
 def buzz(duration=0.1, count=3): 
     for _ in range(count):
-        for _ in range(100):  # Plus de répétitions pour plus de volume
+        for _ in range(100):
             grovepi.digitalWrite(BUZZER_PORT, 1)
             time.sleep(0.001)
             grovepi.digitalWrite(BUZZER_PORT, 0)
@@ -95,7 +96,6 @@ except Exception as e:
     hardware_ok = False
 
 def safe_display(text, color=(0,255,255)):
-    """Affichage sécurisé sur LCD"""
     try:
         setRGB(*color)
         setText("")  
@@ -104,29 +104,25 @@ def safe_display(text, color=(0,255,255)):
         print(f"[LCD] {text}")
 
 print("Démarrage monitoring...")
-mode = 0  # 0=Temp/Hum, 1=Light/GPS, 2=GPS/City, 3=Pressure/Alt
+mode = 0
 last_btn = 0
 
 while True:
     try:
-        # Gestion bouton et LED
         btn = grovepi.digitalRead(BTN_PORT)
         if btn and not last_btn:
-            mode = (mode + 1) % 4  # Changé de 3 à 4 modes
+            mode = (mode + 1) % 4
             print("Mode:", ["Temp/Hum", "Light/GPS", "GPS/City", "Pressure/Alt"][mode])
             grovepi.digitalWrite(LED_PORT, 1 if mode > 0 else 0)
             time.sleep(0.2)
         last_btn = btn
 
-        # Lecture capteurs
         light = grovepi.analogRead(LIGHT_PORT)
 
-        # Vérification luminosité
         if light < LIGHT_THRESHOLD:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
             play_short_tune()
     
-        # Données MQTT
         mqtt_data = {
             "timestamp": time.time(),
             "light": light,
@@ -145,47 +141,41 @@ while True:
         print("\nDonnées MQTT envoyées:")
         print(json.dumps(mqtt_data, indent=2))
 
-
-        # Affichage selon mode
-        if mode == 0:  # Mode Temp/Hum/Baro
+        if mode == 0:
             temp, hum = grovepi.dht(DHT_PORT, 0)
             
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
                 safe_display(
-                    f"T:{temp:.1f}C {pressure:.0f}hPa\n" if pressure else f"T:{temp:.1f}C\n"
+                    f"T:{temp:.1f}C {int(mqtt_send(pressure))}hPa\n" if pressure else f"T:{temp:.1f}C\n"
                     f"H:{hum}%"
                 )
             else:
                 safe_display("Err DHT", color=(255,0,0))
                 
-        elif mode == 1:  # Mode Light/GPS
-            # Raccourcissement des coordonnées GPS
-            short_lat = f"{float(mqtt_send(lat)):.3f}"  # 4 décimales suffisent
-            short_lon = f"{float(mqtt_send(lon)):.3f}"
+        elif mode == 1:
+            short_lat = f"{mqtt_send(lat):.3f}"
+            short_lon = f"{mqtt_send(lon):.3f}"
             safe_display(
                 f"L:{light}\n"
-                f"{short_lat},{short_lon}"  # Suppression du préfixe "GPS:"
+                f"{short_lat},{short_lon}"
             )
             
-        elif mode == 2:  # Mode GPS/City
-            # Raccourcissement des coordonnées GPS
-            short_alt = f"{float(mqtt_send(alt)):.3f}"
+        elif mode == 2:
+            short_alt = f"{mqtt_send(alt):.3f}"
             safe_display(
                 f"{short_alt}\n"
                 f"Lille"
             )
 
-        else:  # Mode Pressure/Alt (mode 3)
-            # Conversion et formatage des valeurs
-            press = mqtt_send(pressure)  # Conversion en hPa
-            alt = mqtt_send(altitude)    # Conversion en mètres
+        else:
+            press = mqtt_send(pressure)
+            alt_val = mqtt_send(altitude)
             safe_display(
-                f"P:{press}hPa\n"
-                f"Alt:{alt}m"
+                f"P:{int(press)}hPa\n"
+                f"Alt:{int(alt_val)}m"
             )
 
-        # Envoi MQTT
         client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
         
         time.sleep(0.5)
@@ -196,7 +186,6 @@ while True:
         print(f"Erreur: {e}")
         time.sleep(0.5)
 
-# Nettoyage
 print("\nArrêt...")
 client.loop_stop()
 client.disconnect()
