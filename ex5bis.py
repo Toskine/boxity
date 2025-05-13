@@ -9,10 +9,28 @@ import math
 class GPS:
     def __init__(self, port="/dev/ttyAMA0", baud=9600):
         try:
-            self.ser = serial.Serial(port, baud, timeout=0)
+            print(f"Tentative d'ouverture du port {port} à {baud} bauds...")
+            self.ser = serial.Serial(port, baud, timeout=1)  # Augmenté timeout à 1s
             self.ser.flush()
-            print("GPS initialisé sur", port)
+            
+            # Test initial de réception
+            print("Test de réception GPS...")
+            data_received = False
+            for i in range(5):  # 5 tentatives
+                line = self.ser.readline().decode('ascii', errors='replace').strip()
+                if line:
+                    print(f"Données reçues ({i}): {line}")
+                    data_received = True
+                    break
+                print(f"Tentative {i+1}: Pas de données")
+                time.sleep(1)
+            
+            if not data_received:
+                raise Exception("Aucune donnée reçue du GPS")
+                
+            print("GPS initialisé avec succès")
             self.working = True
+            
         except Exception as e:
             print(f"Erreur initialisation GPS: {e}")
             self.working = False
@@ -20,51 +38,47 @@ class GPS:
         self.last_valid_position = None
         self.last_valid_time = 0
 
-    def decimal_degrees(self, raw_degrees):
-        try:
-            degrees = float(raw_degrees) // 100
-            d = float(raw_degrees) % 100 / 60
-            return degrees + d
-        except:
-            return None
-
     def read_position(self):
         if not self.working:
             return None, None, None
 
         try:
-            line = self.ser.readline().decode('ascii', errors='replace').strip()
-            if line.startswith('$GPGGA'):
-                parts = line.split(',')
-                print(f"Trame GPS: {line}")  # Affichage de la trame brute
-                
-                if len(parts) >= 10 and parts[6] != '0':
-                    try:
-                        lat = self.decimal_degrees(float(parts[2]))
-                        if parts[3] == 'S':
-                            lat = -lat
-                            
-                        lon = self.decimal_degrees(float(parts[4]))
-                        if parts[5] == 'W':
-                            lon = -lon
-                            
-                        alt = float(parts[9])
-                        
-                        self.last_valid_position = (lat, lon, alt)
-                        self.last_valid_time = time.time()
-                        
-                        print(f"Position GPS: {lat:.6f}, {lon:.6f}, {alt:.1f}m")
-                        return lat, lon, alt
-                    except ValueError:
-                        print("Erreur conversion données GPS")
-                else:
-                    sats = parts[7] if len(parts) > 7 else "?"
-                    print(f"Attente fix GPS ({sats} satellites)")
+            for _ in range(3):  # Essayer de lire plusieurs trames
+                line = self.ser.readline().decode('ascii', errors='replace').strip()
+                if line.startswith('$GPGGA'):
+                    parts = line.split(',')
+                    print(f"\nAnalyse trame GPS: {line}")
+                    print(f"Qualité fix: {parts[6]} (0=No Fix, 1=Fix, 2=DGPS)")
+                    print(f"Nombre de satellites: {parts[7]}")
                     
+                    if len(parts) >= 10 and parts[6] != '0':
+                        try:
+                            lat = self.decimal_degrees(float(parts[2]))
+                            if parts[3] == 'S':
+                                lat = -lat
+                                
+                            lon = self.decimal_degrees(float(parts[4]))
+                            if parts[5] == 'W':
+                                lon = -lon
+                                
+                            alt = float(parts[9])
+                            
+                            self.last_valid_position = (lat, lon, alt)
+                            self.last_valid_time = time.time()
+                            
+                            print(f"Position valide: {lat:.6f}, {lon:.6f}, {alt:.1f}m")
+                            return lat, lon, alt
+                        except ValueError as ve:
+                            print(f"Erreur conversion: {ve}")
+                    else:
+                        sats = parts[7] if len(parts) > 7 else "?"
+                        print(f"En attente fix GPS ({sats} satellites visibles)")
+                        
         except Exception as e:
             print(f"Erreur lecture GPS: {e}")
         
         if self.last_valid_position and time.time() - self.last_valid_time < 10:
+            print("Utilisation dernière position valide")
             return self.last_valid_position
             
         return None, None, None
@@ -187,12 +201,14 @@ while True:
                     safe_display(f"T:{temp:.1f}C No GPS\nH:{humidity:.1f}%")
                 
                 print(f"""
-Mesures:
-- Température: {temp:.1f}°C
-- Humidité: {humidity:.1f}%
-- Lumière: {light}
-- GPS: {f"lat:{lat:.4f} lon:{lon:.4f} alt:{alt}m" if lat else "No Fix"}
-""")
+                    Mesures:
+                    - Température: {temp:.1f}°C
+                    - Humidité: {humidity:.1f}%
+                    - Lumière: {light}
+                    - GPS: {f"lat:{lat:.4f} lon:{lon:.4f} alt:{alt}m" if lat else "No Fix"}
+                    """)
+                print(f'latitude: {lat:.4f}, longitude: {lon:.4f}, altitude: {alt}m')
+
                 mqtt_data.update({
                     "temperature": temp,
                     "humidity": humidity
