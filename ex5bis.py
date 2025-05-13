@@ -84,7 +84,7 @@ except Exception as e:
     print(f"Erreur initialisation: {e}")
     hardware_ok = False
 
-def safe_display(text, co lor=(0,255,255)):
+def safe_display(text, color=(0,255,255)):
     """Affichage sécurisé sur LCD"""
     try:
         setRGB(*color)
