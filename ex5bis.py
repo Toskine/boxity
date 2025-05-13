@@ -7,12 +7,30 @@ import serial
 import math
 import mido
 import os
-
+import smbus
+from grove_i2c_barometic_sensor import BMP085  # Import du baromètre
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
 MQTT_PORT = 1883
 MQTT_TOPIC = "boxity/capteurs"
+
+# Configuration des ports
+DHT_PORT = 7     # D7
+LIGHT_PORT = 0   # A0
+BTN_PORT = 6     # D6
+LED_PORT = 4     # D4
+BUZZER_PORT = 3  # D3
+LIGHT_THRESHOLD = 300  # Seuil de luminosité
+
+# Initialisation du baromètre
+try:
+    bmp = BMP085(0x77, 1)  # Mode STANDARD
+    print("Baromètre initialisé")
+    baro_ok = True
+except Exception as e:
+    print(f"Erreur baromètre: {e}")
+    baro_ok = False
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT: " + ("Connecté" if rc == 0 else f"Erreur {rc}"))
@@ -27,14 +45,6 @@ try:
 except Exception as e:
     print(f"Erreur MQTT: {e}")
 
-# Configuration des ports
-DHT_PORT = 7     # D7
-LIGHT_PORT = 0   # A0
-BTN_PORT = 6     # D6
-LED_PORT = 4     # D4
-BUZZER_PORT = 3  # D3
-LIGHT_THRESHOLD = 300  # Seuil de luminosité
-
 NOTES = {
     'C4': 262,
     'E4': 330,
@@ -44,13 +54,16 @@ NOTES = {
     'G5': 784
 }
 
-# Dictionary to convert MIDI note numbers to frequencies (Hz)
-MIDI_TO_FREQ = {}
-for i in range(128):
-    MIDI_TO_FREQ[i] = 440.0 * (2.0 ** ((i - 69) / 12.0))
+def play_short_tune():
+    """Joue une courte mélodie"""
+    notes = ['E5', 'G5', 'C5']
+    durations = [0.15, 0.15, 0.2]
+    
+    for note, duration in zip(notes, durations):
+        play_tone(note, duration)
+        time.sleep(0.05)
 
 def play_tone(note_or_freq, duration=0.2):
-    # Determine if input is a note name or a frequency
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
     else:
@@ -60,59 +73,18 @@ def play_tone(note_or_freq, duration=0.2):
         time.sleep(duration)
         return
         
-    for _ in range(int(duration * 100)):  # Augmenté de 20 à 100 cycles
+    cycles = int(duration * freq)
+    period = 1.0 / freq
+    
+    for _ in range(cycles):
         grovepi.digitalWrite(BUZZER_PORT, 1)
-        time.sleep(1.0 / (2 * freq))  # Demi-période
+        time.sleep(period/2)
         grovepi.digitalWrite(BUZZER_PORT, 0)
-        time.sleep(1.0 / (2 * freq))
+        time.sleep(period/2)
 
-def play_mario_tune():
-    try:
-        # Open Mario.mid file from the same directory as this script
-        midi_file_path = 'Mario.mid'
-        
-        # Load and parse the MIDI file
-        mid = mido.MidiFile(midi_file_path)
-        print(f"MIDI: Chargement du fichier {midi_file_path} réussi")
-        
-        # Default tempo (microseconds per beat)
-        tempo = 500000
-        ticks_per_beat = mid.ticks_per_beat
-        
-        # Play notes from the MIDI file
-        for msg in mid:
-            if msg.type == 'set_tempo':
-                tempo = msg.tempo
-            
-            if not isinstance(msg, mido.MetaMessage):
-                if msg.type == 'note_on' and msg.velocity > 0:
-                    # Play the note
-                    freq = MIDI_TO_FREQ[msg.note]
-                    
-                    # Convert time from MIDI ticks to seconds
-                    # Simple approximation using a fixed duration
-                    duration = 0.2
-                    
-                    print(f"MIDI: Note {msg.note} (freq={freq:.2f}Hz)")
-                    play_tone(freq, duration)
-                    
-                    # Wait for the next message time
-                    if msg.time > 0:
-                        seconds = mido.tick2second(msg.time, ticks_per_beat, tempo)
-                        time.sleep(max(0.01, seconds))  # Ensure at least a small delay
-                elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
-                    # Handle time for note off events
-                    if msg.time > 0:
-                        seconds = mido.tick2second(msg.time, ticks_per_beat, tempo)
-                        time.sleep(max(0.01, seconds))
-    except Exception as e:
-        print(f"Erreur lecture MIDI: {e}")
-        # Fallback to simple beep if MIDI fails
-        buzz(0.2, 2)
-
-def buzz(duration=0.4, count=1): 
+def buzz(duration=0.1, count=3): 
     for _ in range(count):
-        for _ in range(50):  # Répétition rapide pour plus de volume
+        for _ in range(100):  # Plus de répétitions pour plus de volume
             grovepi.digitalWrite(BUZZER_PORT, 1)
             time.sleep(0.001)
             grovepi.digitalWrite(BUZZER_PORT, 0)
@@ -120,11 +92,13 @@ def buzz(duration=0.4, count=1):
         if count > 1:
             time.sleep(0.05)
 
-
+# Initialisation du matériel
 try:
     grovepi.pinMode(BTN_PORT, "INPUT")
-    grovepi.pinMode(LED_PORT, "OUTPUT")  # Configure LED
-    grovepi.digitalWrite(LED_PORT, 0)    # LED off initially
+    grovepi.pinMode(LED_PORT, "OUTPUT")
+    grovepi.pinMode(BUZZER_PORT, "OUTPUT")
+    grovepi.digitalWrite(LED_PORT, 0)
+    grovepi.digitalWrite(BUZZER_PORT, 0)
     setRGB(0, 255, 255)
     print("Initialisation matériel OK")
     hardware_ok = True
@@ -142,7 +116,7 @@ def safe_display(text, color=(0,255,255)):
         print(f"[LCD] {text}")
 
 print("Démarrage monitoring...")
-mode = 0  # 0=Temp/Hum/GPS, 1=Light/GPS, 2=GPS/City
+mode = 0  # 0=Temp/Hum/Baro, 1=Light/GPS, 2=GPS/City
 last_btn = 0
 
 while True:
@@ -150,21 +124,27 @@ while True:
         # Gestion bouton et LED
         btn = grovepi.digitalRead(BTN_PORT)
         if btn and not last_btn:
-            mode = (mode + 1) % 3  # Cycle entre 0, 1 et 2
-            print("Mode:", ["Temp/Hum", "Light/GPS", "GPS/City"][mode])
-            # Toggle LED on mode change (ON pour modes 1 et 2)
+            mode = (mode + 1) % 3
+            print("Mode:", ["Temp/Hum/Baro", "Light/GPS", "GPS/City"][mode])
             grovepi.digitalWrite(LED_PORT, 1 if mode > 0 else 0)
-            time.sleep(0.2)  # Anti-rebond
+            time.sleep(0.2)
         last_btn = btn
 
         # Lecture capteurs
         light = grovepi.analogRead(LIGHT_PORT)
+        if baro_ok:
+            pressure = bmp.readPressure() / 100.0  # Conversion en hPa
+            baro_temp = bmp.readTemperature()
+            altitude = bmp.readAltitude(101560)  # Altitude basée sur pression au niveau de la mer
+        else:
+            pressure = baro_temp = altitude = None
+
         # Vérification luminosité
         if light < LIGHT_THRESHOLD:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
-            play_mario_tune()
+            play_short_tune()
 
-        lat, lon, alt = ("50.6278", "3.0583", "28.2")  # Corrigé format des coordonnées
+        lat, lon, alt = ("50.6278", "3.0583", "28.2")
     
         # Données MQTT
         mqtt_data = {
@@ -175,17 +155,23 @@ while True:
                 "lat": lat,
                 "lon": lon,
                 "alt": alt
+            },
+            "barometer": {
+                "pressure": pressure,
+                "temperature": baro_temp,
+                "altitude": altitude
             }
         }
 
+
         # Affichage selon mode
-        if mode == 0:  # Mode Temp/Hum
+        if mode == 0:  # Mode Temp/Hum/Baro
             temp, hum = grovepi.dht(DHT_PORT, 0)
             
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
                 safe_display(
-                    f"T:{temp:.1f}C\n"
+                    f"T:{temp:.1f}C {pressure:.0f}hPa\n" if pressure else f"T:{temp:.1f}C\n"
                     f"H:{hum:.1f}%"
                 )
             else:
@@ -218,8 +204,8 @@ while True:
 print("\nArrêt...")
 client.loop_stop()
 client.disconnect()
-grovepi.digitalWrite(LED_PORT, 0)  # Turn off LED
-grovepi.digitalWrite(BUZZER_PORT, 0) 
+grovepi.digitalWrite(LED_PORT, 0)
+grovepi.digitalWrite(BUZZER_PORT, 0)
 setRGB(0,0,0)
 setText("")
 print("Terminé.")
