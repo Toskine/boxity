@@ -154,7 +154,7 @@ while True:
                 mqtt_data.update({"temp": temp, "humidity": hum})
                 safe_display(
                     f"T:{temp:.1f}C {pressure:.0f}hPa\n" if pressure else f"T:{temp:.1f}C\n"
-                    f"H:{hum:.1f}%"
+                    f"H:{hum}%"
                 )
             else:
                 safe_display("Err DHT", color=(255,0,0))
@@ -178,11 +178,11 @@ while True:
 
         else:  # Mode Pressure/Alt (mode 3)
             # Conversion et formatage des valeurs
-            press = float(mqtt_send(pressure))  # Conversion en hPa
-            alt = float(mqtt_send(altitude))    # Conversion en mètres
+            press = mqtt_send(pressure)  # Conversion en hPa
+            alt = mqtt_send(altitude)    # Conversion en mètres
             safe_display(
-                f"P:{press:.0f}hPa\n"
-                f"Alt:{alt:.1f}m"
+                f"P:{press}hPa\n"
+                f"Alt:{alt}m"
             )
 
         # Envoi MQTT
