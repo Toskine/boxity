@@ -44,33 +44,34 @@ NOTES = {
 }
 
 def play_tone(note, duration=0.2):
-    """Joue une note sur le buzzer"""
-    for _ in range(int(duration * 10)):  # Plus de cycles = son plus fort
+    """Joue une note sur le buzzer avec un volume BEAUCOUP plus fort"""
+    for _ in range(int(duration * 100)):  # Augmenté de 20 à 100 cycles
         grovepi.digitalWrite(BUZZER_PORT, 1)
         time.sleep(1.0 / (2 * NOTES[note]))  # Demi-période
         grovepi.digitalWrite(BUZZER_PORT, 0)
         time.sleep(1.0 / (2 * NOTES[note]))
 
 def play_mario_tune():
-    """Joue le thème de Mario quand il prend une pièce"""
+    """Joue le thème de Mario avec un volume BEAUCOUP plus fort"""
     notes = ['E5', 'G5', 'E5', 'C5', 'G4', 'C5']
-    durations = [0.15, 0.15, 0.15, 0.15, 0.15, 0.3]
+    durations = [0.3, 0.3, 0.3, 0.3, 0.3, 0.6]  # Durées augmentées pour plus de volume
     
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
-        time.sleep(0.05)  # Petit délai entre les notes
+        time.sleep(0.01)  # Délai très court entre les notes
 
-
-def buzz(duration=0.1, count=1):
-    """Fait bipper le buzzer"""
+def buzz(duration=0.4, count=1):  # Durée doublée
+    """Fait bipper le buzzer beaucoup plus fort"""
     for _ in range(count):
-        grovepi.digitalWrite(BUZZER_PORT, 1)
-        time.sleep(duration)
-        grovepi.digitalWrite(BUZZER_PORT, 0)
-        if count > 1:  # Pause entre les bips
-            time.sleep(0.1)
+        for _ in range(50):  # Répétition rapide pour plus de volume
+            grovepi.digitalWrite(BUZZER_PORT, 1)
+            time.sleep(0.001)
+            grovepi.digitalWrite(BUZZER_PORT, 0)
+            time.sleep(0.001)
+        if count > 1:
+            time.sleep(0.05)
 
-# Initialisation matériel
+
 try:
     gps = GPS()
     grovepi.pinMode(BTN_PORT, "INPUT")
@@ -83,7 +84,7 @@ except Exception as e:
     print(f"Erreur initialisation: {e}")
     hardware_ok = False
 
-def safe_display(text, color=(0,255,255)):
+def safe_display(text, co lor=(0,255,255)):
     """Affichage sécurisé sur LCD"""
     try:
         setRGB(*color)
