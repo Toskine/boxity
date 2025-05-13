@@ -8,7 +8,8 @@ import math
 import mido
 import os
 import smbus
-from grove.i2c import Bus   # Import du baromètre
+from grove.i2c import Bus
+from seeed_bmp280 import BMP280
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -25,13 +26,25 @@ LIGHT_THRESHOLD = 300  # Seuil de luminosité
 
 # Initialisation du baromètre
 try:
-    bus = Bus(3)  # I2C bus 3
-    bmp = bus.sensor(0x77)  # Adresse I2C du BMP280
-    print("Baromètre initialisé")
+    # Initialisation I2C et BMP280
+    i2c_bus = Bus(3)  # I2C bus 3
+    bmp280 = BMP280(bus=i2c_bus)
+    
+    # Test de lecture pour vérifier que tout fonctionne
+    test_temp = bmp280.get_temperature()
+    test_pressure = bmp280.get_pressure()
+    
+    print("Baromètre initialisé avec succès:")
+    print(f"  Test température: {test_temp:.1f}°C")
+    print(f"  Test pression: {test_pressure:.1f}Pa")
     baro_ok = True
+    bmp = bmp280  # Pour garder la compatibilité avec le reste du code
+
 except Exception as e:
-    print(f"Erreur baromètre: {e}")
+    print(f"Erreur initialisation baromètre: {e}")
+    print("Vérifiez que le BMP280 est bien branché sur I2C-3")
     baro_ok = False
+    bmp = None
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT: " + ("Connecté" if rc == 0 else f"Erreur {rc}"))
