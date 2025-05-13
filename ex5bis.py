@@ -14,15 +14,7 @@ class GPS:
             self.ser.flush()
             
             print("Test réception GPS...")
-            for i in range(10):
-                line = self.ser.readline().decode('ascii', errors='replace').strip()
-                if line:
-                    print(f"Trame reçue: {line}")
-                    self.working = True
-                    break
-                print(f"Attente données... ({i+1}/10)")
-                time.sleep(0.5)
-            
+        
             if not line:
                 raise Exception("Aucune donnée GPS")
                 
