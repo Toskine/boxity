@@ -6,7 +6,6 @@ import json
 import serial
 import math
 
-from gps import GPS
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -175,7 +174,6 @@ while True:
 print("\nArrêt...")
 client.loop_stop()
 client.disconnect()
-gps.close()
 grovepi.digitalWrite(LED_PORT, 0)  # Turn off LED
 grovepi.digitalWrite(BUZZER_PORT, 0) 
 setRGB(0,0,0)
