@@ -31,7 +31,7 @@ LIGHT_PORT = 0   # A0
 BTN_PORT = 6     # D6
 LED_PORT = 4     # D4
 BUZZER_PORT = 3  # D3
-LIGHT_THRESHOLD = 200
+LIGHT_THRESHOLD = 300  # Seuil de luminosité
 
 NOTES = {
     'C4': 262,
