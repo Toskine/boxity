@@ -97,7 +97,9 @@ except Exception as e:
 def safe_display(text, color=(0,255,255)):
     try:
         setRGB(*color)
-        setText_norefresh(text)
+        setText("")  # Efface d'abord l'écran
+        time.sleep(0.1)  # Petit délai pour assurer l'effacement
+        setText(text)  # Affiche le nouveau texte
     except:
         print(f"[LCD] {text}")
 
