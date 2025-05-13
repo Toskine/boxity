@@ -120,22 +120,6 @@ while True:
 
         # Lecture capteurs
         light = grovepi.analogRead(LIGHT_PORT)
-        if baro_ok:
-            try:
-
-                print("\nLecture baromètre:")
-                print(f"  Pression: {pressure:.1f} hPa")
-                print(f"  Altitude: {altitude:.1f} m")
-                print("\nLecture baromètre:")
-                print(f"  Pression: {pressure:.1f} hPa")
-                print(f"  Altitude: {altitude:.1f} m")
-            except Exception as e:
-                print(f"\nErreur lecture baromètre: {e}")
-                pressure = baro_temp = altitude = None
-        else:
-            if not baro_ok:
-                print("\nBaromètre non initialisé")
-            pressure = baro_temp = altitude = None
 
         # Vérification luminosité
         if light < LIGHT_THRESHOLD:
