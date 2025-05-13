@@ -6,80 +6,7 @@ import json
 import serial
 import math
 
-class GPS:
-    def __init__(self, port="/dev/ttyAMA0", baud=9600):
-        try:
-            print(f"Initialisation GPS sur {port} à {baud} bauds...")
-            self.ser = serial.Serial(port, baud, timeout=1)
-            self.ser.flush()
-            
-            print("Test réception GPS...")
-        
-            if not line:
-                raise Exception("Aucune donnée GPS")
-                
-        except Exception as e:
-            print(f"Erreur GPS: {e}")
-            self.working = False
-        
-        self.last_position = None
-        self.last_time = 0
-
-    def decimal_degrees(self, raw_degrees):
-        try:
-            degrees = float(raw_degrees) // 100
-            minutes = float(raw_degrees) % 100
-            return degrees + (minutes / 60)
-        except:
-            return None
-
-    def read_position(self):
-        if not self.working:
-            return None, None, None
-
-        try:
-            for _ in range(5):
-                line = self.ser.readline().decode('ascii', errors='replace').strip()
-                print(f"Trame brute: {line}")
-                
-                if line.startswith('$GPGGA'):
-                    parts = line.split(',')
-                    print(f"Fix: {parts[6]}, Satellites: {parts[7]}")
-                    
-                    if len(parts) >= 10 and parts[6] != '0':
-                        try:
-                            lat = self.decimal_degrees(float(parts[2]))
-                            if parts[3] == 'S':
-                                lat = -lat
-                                
-                            lon = self.decimal_degrees(float(parts[4]))
-                            if parts[5] == 'W':
-                                lon = -lon
-                                
-                            alt = float(parts[9])
-                            
-                            self.last_position = (lat, lon, alt)
-                            self.last_time = time.time()
-                            
-                            print(f"Position: {lat:.6f}, {lon:.6f}, {alt:.1f}m")
-                            return lat, lon, alt
-                            
-                        except ValueError as e:
-                            print(f"Erreur conversion: {e}")
-                    else:
-                        print(f"Pas de fix ({parts[7]} satellites)")
-                        
-        except Exception as e:
-            print(f"Erreur lecture GPS: {e}")
-        
-        if self.last_position and time.time() - self.last_time < 10:
-            return self.last_position
-            
-        return None, None, None
-
-    def close(self):
-        if hasattr(self, 'ser') and self.ser.is_open:
-            self.ser.close()
+from gps import GPS
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -186,6 +113,14 @@ while True:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
             play_mario_tune()  # Joue la mélodie de Mario
             
+        gps = GPS(fix_timeout=90)   # on peut étendre le timeout si le fix est long
+        if not gps.working:
+            print("GPS indisponible, arrêt ou fallback…")
+        else:
+            # au démarrage on peut forcer une première lecture
+            lat, lon, alt = gps.read_position()
+            if lat is None:
+                print("Toujours pas de fix après init, en attente…")
         lat, lon, alt = gps.read_position() if gps.working else (None, None, None)
         
         # Données MQTT
