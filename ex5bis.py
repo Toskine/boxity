@@ -83,7 +83,8 @@ def safe_display(text, color=(0,255,255)):
     """Affichage sécurisé sur LCD"""
     try:
         setRGB(*color)
-        setText_norefresh(text)
+        setText("")  # Clear screen first
+        setText(text)  # Then write new text
     except:
         print(f"[LCD] {text}")
 
@@ -100,6 +101,7 @@ while True:
             print("Mode:", "Light/GPS" if mode else "Temp/Hum/GPS")
             # Toggle LED on mode change
             grovepi.digitalWrite(LED_PORT, mode)
+            time.sleep(0.2)  # Anti-rebond
         last_btn = btn
 
         # Lecture capteurs
@@ -107,12 +109,9 @@ while True:
         # Vérification luminosité
         if light < LIGHT_THRESHOLD:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
-            play_mario_tune()  # Joue la mélodie de Mario
+            play_mario_tune()
 
-           
-
-        lat, lon, alt = ("50,6278", "3,0583","28,2")
-        
+        lat, lon, alt = ("50,6278", "3,0583","28,2")        
     
         # Données MQTT
         mqtt_data = {
@@ -129,35 +128,23 @@ while True:
             }
 
         # Affichage selon mode
-        if mode == 0:
+        if mode == 0:  # Mode Temp/Hum/GPS
             temp, hum = grovepi.dht(DHT_PORT, 0)
             
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
                 
-                if lat is not None:
-                    safe_display(
-                        f"T:{temp:.1f}C {lat}\n"  # Retiré .4f car lat est un string
-                        f"H:{hum:.1f}% {lon}"     # Retiré .4f car lon est un string
-                    )
-                else:
-                    safe_display(
-                        f"T:{temp:.1f}C\n"
-                        f"H:{hum:.1f}%"
-                    )
+                safe_display(
+                    f"T:{temp:.1f}C\n"
+                    f"H:{hum:.1f}%"
+                )
             else:
                 safe_display("Err DHT", color=(255,0,0))
-        else:
-            if lat is not None:
-                safe_display(
-                    f"L:{light}\n"
-                    f"GPS:{lat},{lon}"  # Retiré .4f car lat et lon sont des strings
-                )
-            else:
-                safe_display(
-                    f"L:{light}\n"
-                    f"GPS: No Fix"
-                )
+        else:  # Mode Light/GPS
+            safe_display(
+                f"L:{light}\n"
+                f"GPS: No Fix"
+            )
 
         # Envoi MQTT
         client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
