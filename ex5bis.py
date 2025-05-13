@@ -50,7 +50,7 @@ def play_short_tune():
         play_tone(note, duration)
         time.sleep(0.05)
 lat, lon, alt = 0x13c6, 0x131, 0xb04
-pressure, altitude = 0x18bcd, 0xb04
+pressure, altitude = 1013.25, 28.2
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
