@@ -134,10 +134,20 @@ while True:
         # Lecture capteurs
         light = grovepi.analogRead(LIGHT_PORT)
         if baro_ok:
-            pressure = bmp.readPressure() / 100.0  # Conversion en hPa
-            baro_temp = bmp.readTemperature()
-            altitude = bmp.readAltitude(101560)  # Altitude basée sur pression au niveau de la mer
+            try:
+                pressure = bmp.readPressure() / 100.0  # Conversion en hPa
+                baro_temp = bmp.readTemperature()
+                altitude = bmp.readAltitude(101560)  # Altitude basée sur pression au niveau de la mer
+                print("\nLecture baromètre:")
+                print(f"  Pression: {pressure:.1f} hPa")
+                print(f"  Température: {baro_temp:.1f}°C")
+                print(f"  Altitude: {altitude:.1f} m")
+            except Exception as e:
+                print(f"\nErreur lecture baromètre: {e}")
+                pressure = baro_temp = altitude = None
         else:
+            if not baro_ok:
+                print("\nBaromètre non initialisé")
             pressure = baro_temp = altitude = None
 
         # Vérification luminosité
@@ -161,8 +171,11 @@ while True:
                 "pressure": pressure,
                 "temperature": baro_temp,
                 "altitude": altitude
-            }
+            },
         }
+
+        print("\nDonnées MQTT envoyées:")
+        print(json.dumps(mqtt_data, indent=2))
 
 
         # Affichage selon mode
