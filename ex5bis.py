@@ -5,6 +5,8 @@ import paho.mqtt.client as mqtt
 import json
 import serial
 import math
+import mido
+import os
 
 
 # Configuration MQTT
@@ -42,20 +44,71 @@ NOTES = {
     'G5': 784
 }
 
-def play_tone(note, duration=0.2):
+# Dictionary to convert MIDI note numbers to frequencies (Hz)
+MIDI_TO_FREQ = {}
+for i in range(128):
+    MIDI_TO_FREQ[i] = 440.0 * (2.0 ** ((i - 69) / 12.0))
+
+def play_tone(note_or_freq, duration=0.2):
+    # Determine if input is a note name or a frequency
+    if isinstance(note_or_freq, str) and note_or_freq in NOTES:
+        freq = NOTES[note_or_freq]
+    else:
+        freq = note_or_freq
+        
+    if freq <= 0:
+        time.sleep(duration)
+        return
+        
     for _ in range(int(duration * 100)):  # Augmenté de 20 à 100 cycles
         grovepi.digitalWrite(BUZZER_PORT, 1)
-        time.sleep(1.0 / (2 * NOTES[note]))  # Demi-période
+        time.sleep(1.0 / (2 * freq))  # Demi-période
         grovepi.digitalWrite(BUZZER_PORT, 0)
-        time.sleep(1.0 / (2 * NOTES[note]))
+        time.sleep(1.0 / (2 * freq))
 
 def play_mario_tune():
-    notes = ['E5', 'G5', 'E5', 'C5', 'G4', 'C5']
-    durations = [0.3, 0.3, 0.3, 0.3, 0.3, 0.6]  # Durées augmentées pour plus de volume
-    
-    for note, duration in zip(notes, durations):
-        play_tone(note, duration)
-        time.sleep(0.01)  # Délai très court entre les notes
+    try:
+        # Open Mario.mid file from the same directory as this script
+        midi_file_path = 'Mario.mid'
+        
+        # Load and parse the MIDI file
+        mid = mido.MidiFile(midi_file_path)
+        print(f"MIDI: Chargement du fichier {midi_file_path} réussi")
+        
+        # Default tempo (microseconds per beat)
+        tempo = 500000
+        ticks_per_beat = mid.ticks_per_beat
+        
+        # Play notes from the MIDI file
+        for msg in mid:
+            if msg.type == 'set_tempo':
+                tempo = msg.tempo
+            
+            if not isinstance(msg, mido.MetaMessage):
+                if msg.type == 'note_on' and msg.velocity > 0:
+                    # Play the note
+                    freq = MIDI_TO_FREQ[msg.note]
+                    
+                    # Convert time from MIDI ticks to seconds
+                    # Simple approximation using a fixed duration
+                    duration = 0.2
+                    
+                    print(f"MIDI: Note {msg.note} (freq={freq:.2f}Hz)")
+                    play_tone(freq, duration)
+                    
+                    # Wait for the next message time
+                    if msg.time > 0:
+                        seconds = mido.tick2second(msg.time, ticks_per_beat, tempo)
+                        time.sleep(max(0.01, seconds))  # Ensure at least a small delay
+                elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+                    # Handle time for note off events
+                    if msg.time > 0:
+                        seconds = mido.tick2second(msg.time, ticks_per_beat, tempo)
+                        time.sleep(max(0.01, seconds))
+    except Exception as e:
+        print(f"Erreur lecture MIDI: {e}")
+        # Fallback to simple beep if MIDI fails
+        buzz(0.2, 2)
 
 def buzz(duration=0.4, count=1): 
     for _ in range(count):
@@ -117,15 +170,13 @@ while True:
         mqtt_data = {
             "timestamp": time.time(),
             "light": light,
-            "mode": mode
-        }
-
-        if lat is not None:
-            mqtt_data["gps"] = {
+            "mode": mode,
+            "gps": {
                 "lat": lat,
                 "lon": lon,
                 "alt": alt
             }
+        }
 
         # Affichage selon mode
         if mode == 0:  # Mode Temp/Hum
