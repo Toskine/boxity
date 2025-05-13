@@ -9,7 +9,7 @@ import mido
 import os
 import smbus
 from grove.i2c import Bus
-from seeed_bmp280 import BMP280
+from bmp280 import BMP280
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
