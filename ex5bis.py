@@ -89,7 +89,7 @@ def safe_display(text, color=(0,255,255)):
         print(f"[LCD] {text}")
 
 print("Démarrage monitoring...")
-mode = 0  # 0=Temp/Hum/GPS, 1=Light/GPS
+mode = 0  # 0=Temp/Hum/GPS, 1=Light/GPS, 2=GPS/City
 last_btn = 0
 
 while True:
@@ -97,10 +97,10 @@ while True:
         # Gestion bouton et LED
         btn = grovepi.digitalRead(BTN_PORT)
         if btn and not last_btn:
-            mode = 1 - mode
-            print("Mode:", "Light/GPS" if mode else "Temp/Hum/GPS")
-            # Toggle LED on mode change
-            grovepi.digitalWrite(LED_PORT, mode)
+            mode = (mode + 1) % 3  # Cycle entre 0, 1 et 2
+            print("Mode:", ["Temp/Hum", "Light/GPS", "GPS/City"][mode])
+            # Toggle LED on mode change (ON pour modes 1 et 2)
+            grovepi.digitalWrite(LED_PORT, 1 if mode > 0 else 0)
             time.sleep(0.2)  # Anti-rebond
         last_btn = btn
 
@@ -111,7 +111,7 @@ while True:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
             play_mario_tune()
 
-        lat, lon, alt = ("50,6278", "3,0583","28,2")        
+        lat, lon, alt = ("50.6278", "3.0583", "28.2")  # Corrigé format des coordonnées
     
         # Données MQTT
         mqtt_data = {
@@ -128,22 +128,28 @@ while True:
             }
 
         # Affichage selon mode
-        if mode == 0:  # Mode Temp/Hum/GPS
+        if mode == 0:  # Mode Temp/Hum
             temp, hum = grovepi.dht(DHT_PORT, 0)
             
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
-                
                 safe_display(
                     f"T:{temp:.1f}C\n"
                     f"H:{hum:.1f}%"
                 )
             else:
                 safe_display("Err DHT", color=(255,0,0))
-        else:  # Mode Light/GPS
+                
+        elif mode == 1:  # Mode Light/GPS
             safe_display(
                 f"L:{light}\n"
-                f"GPS: No Fix"
+                f"GPS: {lat},{lon}"
+            )
+            
+        else:  # Mode GPS/City (mode 2)
+            safe_display(
+                f"{lat},{lon}\n"
+                f"Lille"
             )
 
         # Envoi MQTT
@@ -155,7 +161,7 @@ while True:
         break
     except Exception as e:
         print(f"Erreur: {e}")
-        time.sleep(1)
+        time.sleep(0.5)
 
 # Nettoyage
 print("\nArrêt...")
