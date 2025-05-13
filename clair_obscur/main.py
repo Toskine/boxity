@@ -1,6 +1,7 @@
 import time
 import math
 from grove_rgb_lcd import setRGB, setText_norefresh
+import grovepi
 
 from sensors import DHTSensor, LightSensor, GPSSensor
 from mqtt import MQTTClient
