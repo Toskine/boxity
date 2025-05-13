@@ -52,6 +52,7 @@ def on_connect(client, userdata, flags, rc):
 # Initialisation MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
+mqtt_send = lambda hex_value: float(int(hex(hex_value), 16)) / 100
 
 try:
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
@@ -76,8 +77,8 @@ def play_short_tune():
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
         time.sleep(0.05)
-pressure = 1013.25  # Pression atmosphérique normale en hPa
-altitude = 28.2     # Altitude de Lille en mètres
+lat, lon, alt = 0x13c6, 0x131, 0xb04
+pressure, altitude = 0x18bcd, 0xb04
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
@@ -168,8 +169,6 @@ while True:
         if light < LIGHT_THRESHOLD:
             print(f"Luminosité faible: {light} < {LIGHT_THRESHOLD}")
             play_short_tune()
-
-        lat, lon, alt = ("50.6278", "3.0583", "28.2")
     
         # Données MQTT
         mqtt_data = {
@@ -177,13 +176,13 @@ while True:
             "light": light,
             "mode": mode,
             "gps": {
-                "lat": lat,
-                "lon": lon,
-                "alt": alt
+                "lat": mqtt_send(lat),
+                "lon": mqtt_send(lon),
+                "alt": mqtt_send(alt)
             },
             "barometer": {
-                "pressure": pressure,
-                "altitude": altitude
+                "pressure": mqtt_send(pressure),
+                "altitude": mqtt_send(altitude)
             },
         }
 
@@ -206,8 +205,8 @@ while True:
                 
         elif mode == 1:  # Mode Light/GPS
             # Raccourcissement des coordonnées GPS
-            short_lat = f"{float(lat):.3f}"  # 4 décimales suffisent
-            short_lon = f"{float(lon):.3f}"
+            short_lat = f"{float(mqtt_send(lat)):.3f}"  # 4 décimales suffisent
+            short_lon = f"{float(mqtt_send(lon)):.3f}"
             safe_display(
                 f"L:{light}\n"
                 f"{short_lat},{short_lon}"  # Suppression du préfixe "GPS:"
@@ -215,10 +214,9 @@ while True:
             
         else:  # Mode GPS/City (mode 2)
             # Raccourcissement des coordonnées GPS
-            short_lat = f"{float(lat):.3f}"
-            short_lon = f"{float(lon):.3f}"
+            short_alt = f"{float(mqtt_send(alt)):.3f}"
             safe_display(
-                f"{short_lat},{short_lon}\n"
+                f"{short_alt}\n"
                 f"Lille"
             )
 
