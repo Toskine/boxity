@@ -137,8 +137,8 @@ while True:
                 
                 if lat is not None:
                     safe_display(
-                        f"T:{temp:.1f}C {lat:.4f}\n"
-                        f"H:{hum:.1f}% {lon:.4f}"
+                        f"T:{temp:.1f}C {lat}\n"  # Retiré .4f car lat est un string
+                        f"H:{hum:.1f}% {lon}"     # Retiré .4f car lon est un string
                     )
                 else:
                     safe_display(
@@ -151,7 +151,7 @@ while True:
             if lat is not None:
                 safe_display(
                     f"L:{light}\n"
-                    f"GPS:{lat:.4f},{lon:.4f}"
+                    f"GPS:{lat},{lon}"  # Retiré .4f car lat et lon sont des strings
                 )
             else:
                 safe_display(
