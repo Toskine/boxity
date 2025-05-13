@@ -44,7 +44,6 @@ NOTES = {
 }
 
 def play_tone(note, duration=0.2):
-    """Joue une note sur le buzzer avec un volume BEAUCOUP plus fort"""
     for _ in range(int(duration * 100)):  # Augmenté de 20 à 100 cycles
         grovepi.digitalWrite(BUZZER_PORT, 1)
         time.sleep(1.0 / (2 * NOTES[note]))  # Demi-période
@@ -52,7 +51,6 @@ def play_tone(note, duration=0.2):
         time.sleep(1.0 / (2 * NOTES[note]))
 
 def play_mario_tune():
-    """Joue le thème de Mario avec un volume BEAUCOUP plus fort"""
     notes = ['E5', 'G5', 'E5', 'C5', 'G4', 'C5']
     durations = [0.3, 0.3, 0.3, 0.3, 0.3, 0.6]  # Durées augmentées pour plus de volume
     
@@ -60,8 +58,7 @@ def play_mario_tune():
         play_tone(note, duration)
         time.sleep(0.01)  # Délai très court entre les notes
 
-def buzz(duration=0.4, count=1):  # Durée doublée
-    """Fait bipper le buzzer beaucoup plus fort"""
+def buzz(duration=0.4, count=1): 
     for _ in range(count):
         for _ in range(50):  # Répétition rapide pour plus de volume
             grovepi.digitalWrite(BUZZER_PORT, 1)
@@ -73,7 +70,6 @@ def buzz(duration=0.4, count=1):  # Durée doublée
 
 
 try:
-    gps = GPS()
     grovepi.pinMode(BTN_PORT, "INPUT")
     grovepi.pinMode(LED_PORT, "OUTPUT")  # Configure LED
     grovepi.digitalWrite(LED_PORT, 0)    # LED off initially
@@ -115,15 +111,8 @@ while True:
             play_mario_tune()  # Joue la mélodie de Mario
 
            
-        gps = GPS(fix_timeout=90)   # on peut étendre le timeout si le fix est long
-        if not gps.working:
-            print("GPS indisponible, arrêt ou fallback…")
-        else:
-            # au démarrage on peut forcer une première lecture
-            lat, lon, alt = gps.read_position()
-            if lat is None:
-                print("Toujours pas de fix après init, en attente…")
-        lat, lon, alt = gps.read_position() if gps.working else (None, None, None)
+
+        lat, lon, alt = ("50,6278", "3,0583","28,2")
         
     
         # Données MQTT
