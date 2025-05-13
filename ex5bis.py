@@ -104,7 +104,7 @@ def safe_display(text, color=(0,255,255)):
         print(f"[LCD] {text}")
 
 print("Démarrage monitoring...")
-mode = 0  # 0=Temp/Hum/Baro, 1=Light/GPS, 2=GPS/City
+mode = 0  # 0=Temp/Hum, 1=Light/GPS, 2=GPS/City, 3=Pressure/Alt
 last_btn = 0
 
 while True:
@@ -112,8 +112,8 @@ while True:
         # Gestion bouton et LED
         btn = grovepi.digitalRead(BTN_PORT)
         if btn and not last_btn:
-            mode = (mode + 1) % 3
-            print("Mode:", ["Temp/Hum/Baro", "Light/GPS", "GPS/City"][mode])
+            mode = (mode + 1) % 4  # Changé de 3 à 4 modes
+            print("Mode:", ["Temp/Hum", "Light/GPS", "GPS/City", "Pressure/Alt"][mode])
             grovepi.digitalWrite(LED_PORT, 1 if mode > 0 else 0)
             time.sleep(0.2)
         last_btn = btn
@@ -168,7 +168,7 @@ while True:
                 f"{short_lat},{short_lon}"  # Suppression du préfixe "GPS:"
             )
             
-        else:  # Mode GPS/City (mode 2)
+        elif mode == 2:  # Mode GPS/City
             # Raccourcissement des coordonnées GPS
             short_alt = f"{float(mqtt_send(alt)):.3f}"
             safe_display(
@@ -176,10 +176,19 @@ while True:
                 f"Lille"
             )
 
+        else:  # Mode Pressure/Alt (mode 3)
+            # Conversion et formatage des valeurs
+            press = float(mqtt_send(pressure))  # Conversion en hPa
+            alt = float(mqtt_send(altitude))    # Conversion en mètres
+            safe_display(
+                f"P:{press:.0f}hPa\n"
+                f"Alt:{alt:.1f}m"
+            )
+
         # Envoi MQTT
         client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
         
-        time.sleep(1)
+        time.sleep(0.5)
 
     except KeyboardInterrupt:
         break
