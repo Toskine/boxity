@@ -20,6 +20,7 @@ LIGHT_THRESHOLD = 300  # Seuil de luminosité
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT: " + ("Connecté" if rc == 0 else f"Erreur {rc}"))
+
 # Initialisation MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -46,8 +47,10 @@ def play_short_tune():
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
         time.sleep(0.05)
+
 lat, lon, alt = 0x13c6, 0x131, 0xb04
 pressure, altitude = 0x18bcd, 0xb04
+
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
@@ -94,8 +97,7 @@ except Exception as e:
 def safe_display(text, color=(0,255,255)):
     try:
         setRGB(*color)
-        setText("")  
-        setText(text)  
+        setText_norefresh(text)
     except:
         print(f"[LCD] {text}")
 
@@ -143,8 +145,7 @@ while True:
             if not math.isnan(temp) and not math.isnan(hum):
                 mqtt_data.update({"temp": temp, "humidity": hum})
                 safe_display(
-                    f"T:{temp:.1f}C {int(mqtt_send(pressure))}hPa\n" if pressure else f"T:{temp:.1f}C\n"
-                    f"H:{hum}%"
+                    f"T:{temp:.1f}C {int(mqtt_send(pressure))}hPa\nH:{hum}%"
                 )
             else:
                 safe_display("Err DHT", color=(255,0,0))
@@ -153,23 +154,20 @@ while True:
             short_lat = f"{mqtt_send(lat):.3f}"
             short_lon = f"{mqtt_send(lon):.3f}"
             safe_display(
-                f"L:{light}\n"
-                f"{short_lat},{short_lon}"
+                f"L:{light}\n{short_lat},{short_lon}"
             )
             
         elif mode == 2:
             short_alt = f"{mqtt_send(alt):.3f}"
             safe_display(
-                f"{short_alt}\n"
-                f"Lille"
+                f"{short_alt}\nLille"
             )
 
         else:
             press = mqtt_send(pressure)
             alt_val = mqtt_send(altitude)
             safe_display(
-                f"P:{int(press)}hPa\n"
-                f"Alt:{int(alt_val)}m"
+                f"P:{int(press)}hPa\nAlt:{int(alt_val)}m"
             )
 
         client.publish(MQTT_TOPIC, json.dumps(mqtt_data))
