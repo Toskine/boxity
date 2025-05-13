@@ -4,6 +4,7 @@ from grove_rgb_lcd import *
 import paho.mqtt.client as mqtt
 import json
 import serial
+import math
 
 class GPS:
     def __init__(self, port="/dev/ttyAMA0", baud=9600):
@@ -13,7 +14,7 @@ class GPS:
             self.ser.flush()
             
             print("Test réception GPS...")
-            for i in range(10):  # Plus de tentatives
+            for i in range(10):
                 line = self.ser.readline().decode('ascii', errors='replace').strip()
                 if line:
                     print(f"Trame reçue: {line}")
@@ -45,9 +46,9 @@ class GPS:
             return None, None, None
 
         try:
-            for _ in range(5):  # Plus de tentatives
+            for _ in range(5):
                 line = self.ser.readline().decode('ascii', errors='replace').strip()
-                print(f"Trame brute: {line}")  # Debug
+                print(f"Trame brute: {line}")
                 
                 if line.startswith('$GPGGA'):
                     parts = line.split(',')
@@ -79,7 +80,6 @@ class GPS:
         except Exception as e:
             print(f"Erreur lecture GPS: {e}")
         
-        # Utiliser dernière position valide si récente
         if self.last_position and time.time() - self.last_time < 10:
             return self.last_position
             
@@ -111,11 +111,14 @@ except Exception as e:
 DHT_PORT = 7    # D7
 LIGHT_PORT = 0  # A0
 BTN_PORT = 6    # D6
+LED_PORT = 4    # D4
 
 # Initialisation matériel
 try:
     gps = GPS()
     grovepi.pinMode(BTN_PORT, "INPUT")
+    grovepi.pinMode(LED_PORT, "OUTPUT")  # Configure LED
+    grovepi.digitalWrite(LED_PORT, 0)    # LED off initially
     setRGB(0, 255, 255)
     print("Initialisation matériel OK")
     hardware_ok = True
@@ -137,11 +140,13 @@ last_btn = 0
 
 while True:
     try:
-        # Gestion bouton
+        # Gestion bouton et LED
         btn = grovepi.digitalRead(BTN_PORT)
         if btn and not last_btn:
             mode = 1 - mode
             print("Mode:", "Light/GPS" if mode else "Temp/Hum/GPS")
+            # Toggle LED on mode change
+            grovepi.digitalWrite(LED_PORT, mode)
         last_btn = btn
 
         # Lecture capteurs
@@ -176,7 +181,7 @@ while True:
                     )
                 else:
                     safe_display(
-                        f"T:{temp:.1f}C No GPS\n"
+                        f"T:{temp:.1f}C\n"
                         f"H:{hum:.1f}%"
                     )
             else:
@@ -209,6 +214,7 @@ print("\nArrêt...")
 client.loop_stop()
 client.disconnect()
 gps.close()
+grovepi.digitalWrite(LED_PORT, 0)  # Turn off LED
 setRGB(0,0,0)
 setText("")
 print("Terminé.")
