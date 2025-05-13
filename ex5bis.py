@@ -100,10 +100,21 @@ except Exception as e:
     print(f"Erreur MQTT: {e}")
 
 # Configuration des ports
-DHT_PORT = 7    # D7
-LIGHT_PORT = 0  # A0
-BTN_PORT = 6    # D6
-LED_PORT = 4    # D4
+DHT_PORT = 7     # D7
+LIGHT_PORT = 0   # A0
+BTN_PORT = 6     # D6
+LED_PORT = 4     # D4
+BUZZER_PORT = 3  # D3
+LIGHT_THRESHOLD = 200
+
+def buzz(duration=0.1, count=1):
+    """Fait bipper le buzzer"""
+    for _ in range(count):
+        grovepi.digitalWrite(BUZZER_PORT, 1)
+        time.sleep(duration)
+        grovepi.digitalWrite(BUZZER_PORT, 0)
+        if count > 1:  # Pause entre les bips
+            time.sleep(0.1)
 
 # Initialisation matériel
 try:
@@ -143,6 +154,10 @@ while True:
 
         # Lecture capteurs
         light = grovepi.analogRead(LIGHT_PORT)
+        # Vérification luminosité
+        if light < LIGHT_THRESHOLD:
+            buzz(count=3)  # 3 bips courts
+            
         lat, lon, alt = gps.read_position() if gps.working else (None, None, None)
         
         # Données MQTT
@@ -207,6 +222,7 @@ client.loop_stop()
 client.disconnect()
 gps.close()
 grovepi.digitalWrite(LED_PORT, 0)  # Turn off LED
+grovepi.digitalWrite(BUZZER_PORT, 0) 
 setRGB(0,0,0)
 setText("")
 print("Terminé.")
