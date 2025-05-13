@@ -8,7 +8,7 @@ import math
 import mido
 import os
 import smbus
-from grove_i2c_barometic_sensor import BMP085  # Import du baromètre
+from grove.i2c import Bus   # Import du baromètre
 
 # Configuration MQTT
 MQTT_BROKER = "10.34.164.21"
@@ -25,7 +25,8 @@ LIGHT_THRESHOLD = 300  # Seuil de luminosité
 
 # Initialisation du baromètre
 try:
-    bmp = BMP085(0x77, 1)  # Mode STANDARD
+    bus = Bus(3)  # I2C bus 3
+    bmp = bus.sensor(0x77)  # Adresse I2C du BMP280
     print("Baromètre initialisé")
     baro_ok = True
 except Exception as e:
