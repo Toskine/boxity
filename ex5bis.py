@@ -76,7 +76,8 @@ def play_short_tune():
     for note, duration in zip(notes, durations):
         play_tone(note, duration)
         time.sleep(0.05)
-
+pressure = 1013.25  # Pression atmosphérique normale en hPa
+altitude = 28.2     # Altitude de Lille en mètres
 def play_tone(note_or_freq, duration=0.2):
     if isinstance(note_or_freq, str) and note_or_freq in NOTES:
         freq = NOTES[note_or_freq]
@@ -148,12 +149,12 @@ while True:
         light = grovepi.analogRead(LIGHT_PORT)
         if baro_ok:
             try:
-                pressure = bmp.readPressure() / 100.0  # Conversion en hPa
-                baro_temp = bmp.readTemperature()
-                altitude = bmp.readAltitude(101560)  # Altitude basée sur pression au niveau de la mer
+
                 print("\nLecture baromètre:")
                 print(f"  Pression: {pressure:.1f} hPa")
-                print(f"  Température: {baro_temp:.1f}°C")
+                print(f"  Altitude: {altitude:.1f} m")
+                print("\nLecture baromètre:")
+                print(f"  Pression: {pressure:.1f} hPa")
                 print(f"  Altitude: {altitude:.1f} m")
             except Exception as e:
                 print(f"\nErreur lecture baromètre: {e}")
@@ -182,7 +183,6 @@ while True:
             },
             "barometer": {
                 "pressure": pressure,
-                "temperature": baro_temp,
                 "altitude": altitude
             },
         }
@@ -205,14 +205,20 @@ while True:
                 safe_display("Err DHT", color=(255,0,0))
                 
         elif mode == 1:  # Mode Light/GPS
+            # Raccourcissement des coordonnées GPS
+            short_lat = f"{float(lat):.3f}"  # 4 décimales suffisent
+            short_lon = f"{float(lon):.3f}"
             safe_display(
                 f"L:{light}\n"
-                f"GPS: {lat},{lon}"
+                f"{short_lat},{short_lon}"  # Suppression du préfixe "GPS:"
             )
             
         else:  # Mode GPS/City (mode 2)
+            # Raccourcissement des coordonnées GPS
+            short_lat = f"{float(lat):.3f}"
+            short_lon = f"{float(lon):.3f}"
             safe_display(
-                f"{lat},{lon}\n"
+                f"{short_lat},{short_lon}\n"
                 f"Lille"
             )
 
